@@ -1,15 +1,12 @@
-FROM php:8.3-cli-alpine as sio_test
-RUN apk add --no-cache git zip bash
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+FROM php:8.1-fpm
+RUN apt-get update && apt-get install -y zlib1g-dev g++ git libicu-dev zip libzip-dev zip \
+    && docker-php-ext-install intl opcache pdo pdo_mysql \
+    && pecl install apcu \
+    && docker-php-ext-enable apcu \
+    && docker-php-ext-configure zip \
+    && docker-php-ext-install zip
+WORKDIR /var/www/project
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+COPY composer.json composer.lock ./
+RUN composer install --no-interaction --no-scripts --no-autoloader
 
-# Setup php app user
-ARG USER_ID=1000
-RUN adduser -u ${USER_ID} -D -H app
-USER app
-
-COPY --chown=app . /app
-WORKDIR /app
-
-EXPOSE 8337
-
-CMD ["php", "-S", "0.0.0.0:8337", "-t", "public"]
