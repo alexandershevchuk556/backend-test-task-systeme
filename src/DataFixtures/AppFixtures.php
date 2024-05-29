@@ -30,17 +30,26 @@ class AppFixtures extends Fixture
         $p10 = new Promocode();
         $p10->setName('P10');
         $p10->setType('percent');
+        $p10->setDenomination('10');
         $manager->persist($p10);
 
         $p50 = new Promocode();
         $p50->setName('P50');
         $p50->setType('percent');
+        $p50->setDenomination('50');
         $manager->persist($p50);
 
         $f15 = new Promocode();
         $f15->setName('F15');
         $f15->setType('fixed');
+        $f15->setDenomination('15');
         $manager->persist($f15);
+
+        $dogCode = new Promocode();
+        $dogCode->setName('DOG');
+        $dogCode->setType('fixed');
+        $dogCode->setDenomination('25');
+        $manager->persist($dogCode);
 
 
         $germany = new TaxNumber();

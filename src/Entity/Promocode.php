@@ -19,6 +19,9 @@ class Promocode
     #[ORM\Column(length: 255)]
     private ?string $type = null;
 
+    #[ORM\Column]
+    private ?int $denomination = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -44,6 +47,18 @@ class Promocode
     public function setType(string $type): static
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    public function getDenomination(): ?int
+    {
+        return $this->denomination;
+    }
+
+    public function setDenomination(int $denomination): static
+    {
+        $this->denomination = $denomination;
 
         return $this;
     }
