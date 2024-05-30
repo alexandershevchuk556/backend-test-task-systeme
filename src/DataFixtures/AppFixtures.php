@@ -55,7 +55,7 @@ class AppFixtures extends Fixture
         $germany = new TaxNumber();
         $germany->setCountry('Германия');
         $germany->setPercent('19');
-        $germany->setMask('DEXXXXXXXXX ');
+        $germany->setMask('DEXXXXXXXXX');
         $manager->persist($germany);
 
         $france = new TaxNumber();
