@@ -3,9 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Product;
-use App\Entity\Promocode;
 use App\Entity\RequestTypes\Product\ProductCalculatePrice;
-use App\Entity\TaxNumber;
+use App\Entity\RequestTypes\Product\ProductPurchase;
+use App\Services\Payment\PaymentProcessors\PaymentProcessor;
+use App\Services\Payment\PaymentProvider;
 use App\Services\Product\PriceCalculator;
 use App\Services\Product\TaxMaskConverter;
 use Doctrine\ORM\EntityManagerInterface;
@@ -16,6 +17,53 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class ProductController extends AbstractController
 {
+    #[Route('/purchase', name: 'purchase')]
+    public function purchase(
+        EntityManagerInterface               $entityManager,
+        #[MapRequestPayload] ProductPurchase $request,
+        PriceCalculator                      $priceCalculator,
+        TaxMaskConverter                     $taxMaskConverter,
+        PaymentProvider                      $paymentProvider
+    ): JsonResponse
+    {
+        try {
+            $price = $priceCalculator->calculatePrice($request->product, $request->couponCode, $request->taxNumber, $entityManager, $taxMaskConverter);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'status'  => 400,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+
+
+        try {
+            $paymentProcessor = $paymentProvider->getPaymentProcessor($request->paymentProcessor);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'status'  => 400,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+
+        $paymentResponse = $paymentProcessor->pay($price);
+
+        if ($paymentResponse['status'] == 'error') {
+            return new JsonResponse([
+                'status'  => 400,
+                'message' => $paymentResponse['message']
+            ], 400);
+        }
+
+
+        return new JsonResponse([
+            'status'  => 200,
+            'product' => $entityManager->getRepository(Product::class)->find($request->product)->getName(),
+            'price'   => $price,
+            'paymentStatus' => $paymentResponse['message']
+        ], 200);
+
+    }
+
     #[Route('/calculate-price', name: 'app_product')]
     public function calculatePrice(
         EntityManagerInterface                     $entityManager,
@@ -24,48 +72,21 @@ class ProductController extends AbstractController
         TaxMaskConverter                           $taxMaskConverter
     ): JsonResponse
     {
-        $response = [
-            'message' => '',
-            'status'  => 400,
-        ];
 
-        $product = $entityManager->getRepository(Product::class)->find($request->product);
-
-        if (!$product) {
-            $response['message'] = 'Product not found';
-            return new JsonResponse($response, 400);
+        try {
+            $price = $priceCalculator->calculatePrice($request->product, $request->couponCode, $request->taxNumber, $entityManager, $taxMaskConverter);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'status'  => 400,
+                'message' => $e->getMessage()
+            ], 400);
         }
 
-        if ($request->couponCode) {
-            $promocode = $entityManager->getRepository(Promocode::class)->findOneBy(['name' => $request->couponCode]);
-
-            if (!$promocode) {
-                $response['message'] = 'Coupon not found';
-                return new JsonResponse($response, 400);
-            }
-        }
-
-        $taxNumbers = $entityManager->getRepository(TaxNumber::class)->findAll();
-
-        foreach ($taxNumbers as $taxNumber) {
-            $mask = $taxNumber->getMask();
-            $regex = $taxMaskConverter->convertMaskToRegex($mask);
-            if (preg_match("/$regex/", $request->taxNumber)) {
-                $currentTaxNumber = $taxNumber;
-            }
-        }
-
-        if (!isset($currentTaxNumber)) {
-            $response['message'] = 'Tax number not found';
-            return new JsonResponse($response, 400);
-        }
-
-
-        return $this->json([
+        return new JsonResponse([
             'status'  => 200,
-            'product' => $product->getName(),
-            'price'   => $priceCalculator->calculatePrice($product->getPrice(), $currentTaxNumber->getPercent(), $promocode ?? null)
-        ]);
+            'product' => $entityManager->getRepository(Product::class)->find($request->product)->getName(),
+            'price'   => $price
+        ], 200);
 
     }
 }
