@@ -7,9 +7,8 @@ use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Constraints\Regex;
 use Symfony\Component\Validator\Constraints\Type;
 
-class ProductCalculatePrice extends RequestType
+class ProductPurchase extends RequestType
 {
-
     public function __construct(
         #[NotBlank()]
         #[Type('int')]
@@ -20,10 +19,14 @@ class ProductCalculatePrice extends RequestType
         #[Regex('/^[A-Z]+\d*$/', 'Wrong tax number')]
         public readonly string  $taxNumber,
 
+        #[NotBlank()]
+        #[Type('string')]
+        public readonly string $paymentProcessor,
+
         #[Type('string')]
         public readonly ?string $couponCode = null
+
     )
     {
     }
-
 }
